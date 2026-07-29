@@ -5,24 +5,27 @@ const {
   createCertificate,
 } = require("../portfolio/certificates");
 const { launchCoursera } = require("../coursera/auth");
-const { scrapeCertificate } = require("../coursera/scrapper");
+const { openCertificate, scrapeCertificate } = require("../coursera/scrapper");
 
 (async () => {
+  const courseNames = [
+  ];
+
   const { page: courseraPage } = await launchCoursera();
-
-  const courseName = "Structuring Machine Learning";
-  const certificate = await scrapeCertificate(courseraPage, courseName);
-
   const { page: portfolioPage } = await launchPortfolio();
 
+  await openCertificate(courseraPage);
   await openSkills(portfolioPage);
 
-  for (const skill of certificate.skills) {
-    await createSkill(portfolioPage, skill);
+  for (const courseName of courseNames) {
+    const certificate = await scrapeCertificate(courseraPage, courseName);
+    await openSkills(portfolioPage);
+
+    for (const skill of certificate.skills) {
+      await createSkill(portfolioPage, skill);
+    }
+
+    await openCertificates(portfolioPage);
+    await createCertificate(portfolioPage, certificate);
   }
-
-  await openCertificates(portfolioPage);
-  await createCertificate(portfolioPage, certificate);
 })();
-
-

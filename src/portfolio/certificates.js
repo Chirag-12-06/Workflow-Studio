@@ -62,6 +62,7 @@ async function selectSkills(page, skills = []) {
         exact: true,
       })
       .check();
+      pause(500)
   }
 }
 
@@ -81,9 +82,9 @@ async function createCertificate(page, certificate) {
   await openAddCertificateModal(page);
 
   await fillBasicInformation(page, certificate);
-  pause(500);
+  pause(1000);
   await fillLinks(page, certificate);
-  pause(500);
+  pause(1000);
   await selectSkills(page, certificate.skills);
 
   await saveCertificate(page);

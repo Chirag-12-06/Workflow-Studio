@@ -7,6 +7,10 @@ async function openCertificate(page, courseName) {
     })
     .click();
 
+  await page.pause();
+}
+
+async function certificatePage(page,courseName) {
   const certificate = page.getByRole("listitem").filter({
     hasText: courseName,
   });
@@ -26,9 +30,9 @@ async function getSkills(page, courseName) {
     .locator("li span[aria-hidden='true']")
     .allTextContents();
 
-    await page.waitForTimeout(3000); // 3 seconds
+  await page.waitForTimeout(3000); // 3 seconds
 
-    return skills;
+  return skills;
 }
 
 async function getIssuer(page) {
@@ -44,9 +48,9 @@ async function getIssueDate(page) {
 }
 
 async function scrapeCertificate(page, courseName) {
-  await openCertificate(page, courseName);
+  await certificatePage(page, courseName);
 
-  return {
+  const certificate = {
     title: courseName,
     issuer: await getIssuer(page),
     issueDate: await getIssueDate(page),
@@ -57,8 +61,14 @@ async function scrapeCertificate(page, courseName) {
     badgeImageUrl: null,
     skills: await getSkills(page),
   };
+
+  await page.goBack();
+  await page.waitForLoadState("domcontentloaded");
+
+  return certificate;
 }
 
 module.exports = {
+  openCertificate,
   scrapeCertificate,
 };
