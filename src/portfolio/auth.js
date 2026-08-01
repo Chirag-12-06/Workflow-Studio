@@ -1,14 +1,19 @@
-const { launchBrowser } = require("../browser/browser");
-const PROFILES = require("../browser/profiles");
+const path = require("path");
+const dotenv = require("dotenv");
 
-async function launchPortfolio() {
-  const { context, page } = await launchBrowser(PROFILES.PORTFOLIO);
+dotenv.config({
+  path: path.resolve(__dirname, "../../.env"),
+});
 
-  await page.goto("http://localhost:5173");
+const api = require("./api");
 
-  return { context, page };
+async function login() {
+  await api.post("/auth/login", {
+    email: process.env.ADMIN_EMAIL,
+    password: process.env.ADMIN_PASSWORD,
+  });
+
+  console.log("✓ Logged in");
 }
 
-module.exports = {
-  launchPortfolio,
-};
+module.exports = { login };

@@ -1,16 +1,14 @@
+const fs = require("fs");
+
 async function openCertificate(page, courseName) {
-  await page.goto("https://www.coursera.org");
+  await page.goto(
+    "https://www.coursera.org/my-learning?myLearningTab=CERTIFICATES",
+    {
+      waitUntil: "domcontentloaded",
+      timeout: 30000,
+    }
+  );
 
-  await page
-    .getByRole("link", {
-      name: "My Learning",
-    })
-    .click();
-
-  await page.pause();
-}
-
-async function certificatePage(page,courseName) {
   const certificate = page.getByRole("listitem").filter({
     hasText: courseName,
   });
@@ -48,9 +46,7 @@ async function getIssueDate(page) {
 }
 
 async function scrapeCertificate(page, courseName) {
-  await certificatePage(page, courseName);
-
-  const certificate = {
+  return {
     title: courseName,
     issuer: await getIssuer(page),
     issueDate: await getIssueDate(page),
@@ -61,14 +57,50 @@ async function scrapeCertificate(page, courseName) {
     badgeImageUrl: null,
     skills: await getSkills(page),
   };
+}
 
-  await page.goBack();
-  await page.waitForLoadState("domcontentloaded");
+async function downloadCertificate(page, courseName) {
+  // Get the certificate URL from the current page
+
+  const certificateId = page.url().split("/").pop();
+
+  const pdfUrl = `https://www.coursera.org/api/certificate.v1/pdf/${certificateId}`;
+
+  // Build Cookie header
+  const cookies = await page.context().cookies();
+
+  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+
+  const response = await fetch(pdfUrl, {
+    headers: {
+      Cookie: cookieHeader,
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+      Accept: "application/pdf,*/*",
+      Referer: page.url(),
+    },
+  });
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+
+  console.log("Downloaded:", buffer.length, "bytes");
+
+  fs.writeFileSync(
+    `D:\\OneDrive\\Desktop\\Certificates\\${courseName}.pdf`,
+    buffer,
+  );
+}
+
+async function processCertificate(page, courseName) {
+  await openCertificate(page, courseName);
+
+  const certificate = await scrapeCertificate(page, courseName);
+
+  await downloadCertificate(page, courseName);
 
   return certificate;
 }
 
 module.exports = {
-  openCertificate,
-  scrapeCertificate,
+  processCertificate,
 };

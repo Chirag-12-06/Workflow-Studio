@@ -11,6 +11,10 @@
   "description": "",
   "dependencies": {
     "@playwright/test": "^1.61.1",
-    "playwright": "^1.61.1"
+    "axios": "^1.19.0",
+    "axios-cookiejar-support": "^7.0.0",
+    "dotenv": "^17.4.2",
+    "playwright": "^1.61.1",
+    "tough-cookie": "^6.0.2"
   }
 }
