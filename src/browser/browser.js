@@ -10,7 +10,7 @@ async function launchBrowser(profile = "default", options = {}) {
   }
 
   const context = await chromium.launchPersistentContext(profilePath, {
-    channel: "chrome",
+    // channel: "chrome",
     headless: false,
     viewport: null,
     args: ["--start-maximized"],

@@ -1,28 +1,28 @@
 const fs = require("fs");
 
-async function openCertificate(page, courseName) {
+async function openLatestCertificate(page) {
   await page.goto(
     "https://www.coursera.org/my-learning?myLearningTab=CERTIFICATES",
     {
       waitUntil: "domcontentloaded",
       timeout: 30000,
-    }
+    },
   );
-
-  const certificate = page.getByRole("listitem").filter({
-    hasText: courseName,
-  });
-
-  await certificate
-    .getByRole("link", {
-      name: "View certificate",
-    })
+  await page
+    .getByRole("listitem")
+    .nth(4)
+    .getByRole("link", { name: "View certificate" })
     .click();
 
   await page.waitForSelector("[data-testid='skills']");
 }
 
-async function getSkills(page, courseName) {
+async function getTitle(page) {
+  const title = await page.locator("h2").first().textContent();
+  return title.trim();
+}
+
+async function getSkills(page) {
   const skills = await page
     .getByTestId("skills")
     .locator("li span[aria-hidden='true']")
@@ -45,9 +45,12 @@ async function getIssueDate(page) {
   return new Date(text).toISOString().split("T")[0];
 }
 
-async function scrapeCertificate(page, courseName) {
+async function scrapeCertificate(page) {
+  const certificateId = page.url().split("/").pop();
+
   return {
-    title: courseName,
+    certificateId,
+    title: await getTitle(page),
     issuer: await getIssuer(page),
     issueDate: await getIssueDate(page),
     expiryDate: null,
@@ -59,16 +62,11 @@ async function scrapeCertificate(page, courseName) {
   };
 }
 
-async function downloadCertificate(page, courseName) {
-  // Get the certificate URL from the current page
-
-  const certificateId = page.url().split("/").pop();
-
-  const pdfUrl = `https://www.coursera.org/api/certificate.v1/pdf/${certificateId}`;
+async function downloadCertificate(page, certificate) {
+  const pdfUrl = `https://www.coursera.org/api/certificate.v1/pdf/${certificate.certificateId}`;
 
   // Build Cookie header
   const cookies = await page.context().cookies();
-
   const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
 
   const response = await fetch(pdfUrl, {
@@ -86,21 +84,19 @@ async function downloadCertificate(page, courseName) {
   console.log("Downloaded:", buffer.length, "bytes");
 
   fs.writeFileSync(
-    `D:\\OneDrive\\Desktop\\Certificates\\${courseName}.pdf`,
+    `D:\\OneDrive\\Desktop\\Certificates\\${certificate.title}.pdf`,
     buffer,
   );
 }
 
-async function processCertificate(page, courseName) {
-  await openCertificate(page, courseName);
+async function scrapeLatestCertificate(page) {
+  await openLatestCertificate(page);
 
-  const certificate = await scrapeCertificate(page, courseName);
-
-  await downloadCertificate(page, courseName);
-
+  const certificate = await scrapeCertificate(page);
   return certificate;
 }
 
 module.exports = {
-  processCertificate,
+  downloadCertificate,
+  scrapeLatestCertificate,
 };

@@ -3,22 +3,33 @@ const { createIssuer } = require("../portfolio/issuers");
 const { createSkill } = require("../portfolio/skills");
 const { createCertificate } = require("../portfolio/certificates");
 const { launchCoursera } = require("../coursera/auth");
-const { processCertificate } = require("../coursera/scrapper");
+const {
+  downloadCertificate,
+  scrapeLatestCertificate,
+} = require("../coursera/scrapper");
+
+const { getLastCertificateId, setLastCertificateId } = require("./state");
 
 (async () => {
-  const courseName = "Structuring Machine Learning";
+  const { page, context } = await launchCoursera();
 
-  const { page } = await launchCoursera();
   try {
-    const certificate = await processCertificate(page, courseName);
+    const certificate = await scrapeLatestCertificate(page);
+
+    const lastCertificateId = await getLastCertificateId();
+
+    if (certificate.certificateId === lastCertificateId) {
+      console.log("No new certificate found.");
+      return;
+    }
+
+    await downloadCertificate(page, certificate);
 
     await login();
 
-    // Resolve issuer
     const issuer = await createIssuer(certificate.issuer);
     certificate.issuerId = issuer.id;
 
-    // Resolve skills
     const skillIds = [];
 
     for (const skill of certificate.skills) {
@@ -28,8 +39,11 @@ const { processCertificate } = require("../coursera/scrapper");
 
     certificate.skillIds = skillIds;
 
-    // Create certificate
     await createCertificate(certificate);
+
+    await setLastCertificateId(certificate.certificateId);
+
+    console.log("New certificate processed.");
   } finally {
     await context.close();
   }
