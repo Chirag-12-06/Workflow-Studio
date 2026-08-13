@@ -41,6 +41,13 @@ Do not use:
 Machine Learning — explanation of the skill
 Machine Learning: explanation
 
+LINK FORMATTING:
+- Never use Markdown links.
+- Never format URLs as [text](URL).
+- Always output the complete certificate URL as plain text.
+- The certificate URL must appear on its own line.
+- Do not add any text before or after the URL.
+
 IMPORTANT:
 - Base the post only on the supplied certificate data.
 - Do not invent course topics, instructors, projects, achievements, or claims.

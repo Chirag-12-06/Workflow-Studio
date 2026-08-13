@@ -83,10 +83,13 @@ async function downloadCertificate(page, certificate) {
 
   console.log("Downloaded:", buffer.length, "bytes");
 
+  const pdfPath = `D:\\OneDrive\\Desktop\\Certificates\\${certificate.title}.pdf`;
   fs.writeFileSync(
-    `D:\\OneDrive\\Desktop\\Certificates\\${certificate.title}.pdf`,
+    pdfPath,
     buffer,
   );
+
+  return pdfPath;
 }
 
 async function scrapeLatestCertificate(page) {

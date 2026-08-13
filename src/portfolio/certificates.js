@@ -5,8 +5,13 @@ async function createCertificate(certificate) {
     title: certificate.title,
     issuerId: certificate.issuerId,
     credentialUrl: certificate.credentialUrl,
-    featured: certificate.featured ?? false,
+
+    featured: false,
+    isVisible: true,
+    displayOrder: certificate.displayOrder ?? 1,
+
     issueDate: certificate.issueDate,
+
     skillIds: certificate.skillIds,
   };
 
