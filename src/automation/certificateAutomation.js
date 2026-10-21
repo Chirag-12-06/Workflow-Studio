@@ -11,11 +11,9 @@ const {
 
 const { launchLinkedIn } = require("../linkedin/auth");
 const { prepareLinkedInPost } = require("../linkedin/createPost");
+const { createLinkedInCertificate } = require("../linkedin/certificates");
 
-const {
-  getLastCertificateId,
-  setLastCertificateId,
-} = require("./state");
+const { getLastCertificateId, setLastCertificateId } = require("./state");
 
 (async () => {
   const { page, context } = await launchCoursera();
@@ -41,24 +39,15 @@ const {
       return;
     }
 
-    console.log(
-      "New certificate found:",
-      certificate.title
-    );
+    console.log("New certificate found:", certificate.title);
 
     // ---------------------------------------
     // 3. Download certificate PDF
     // ---------------------------------------
 
-    const pdfPath = await downloadCertificate(
-      page,
-      certificate
-    );
+    const pdfPath = await downloadCertificate(page, certificate);
 
-    console.log(
-      "Certificate downloaded:",
-      pdfPath
-    );
+    console.log("Certificate downloaded:", pdfPath);
 
     // Add PDF path to certificate object
     certificate.pdfPath = pdfPath;
@@ -73,9 +62,7 @@ const {
     // 5. Create issuer
     // ---------------------------------------
 
-    const issuer = await createIssuer(
-      certificate.issuer
-    );
+    const issuer = await createIssuer(certificate.issuer);
 
     certificate.issuerId = issuer.id;
 
@@ -99,33 +86,31 @@ const {
 
     await createCertificate(certificate);
 
-    console.log(
-      "Certificate added to Portfolio."
-    );
+    console.log("Certificate added to Portfolio.");
 
     // ---------------------------------------
     // 8. Open LinkedIn
     // ---------------------------------------
 
-    const {
-      page: linkedInPage,
-      context: linkedInContext,
-    } = await launchLinkedIn();
+    const { page: linkedInPage, context: linkedInContext } =
+      await launchLinkedIn();
 
     try {
       // ---------------------------------------
-      // 9. Generate post using OpenAI
-      //    and publish it with certificate
+      // 9. Generate and publish LinkedIn post
       // ---------------------------------------
 
-      await prepareLinkedInPost(
-        linkedInPage,
-        certificate
-      );
+      await prepareLinkedInPost(linkedInPage, certificate);
 
-      console.log(
-        "LinkedIn post created successfully."
-      );
+      console.log("LinkedIn post created successfully.");
+
+      // ---------------------------------------
+      // 10. Add certificate to LinkedIn profile
+      // ---------------------------------------
+
+      await createLinkedInCertificate(linkedInPage, certificate);
+
+      console.log("LinkedIn certificate added successfully.");
 
       // Keep this while testing
       await linkedInPage.pause();
@@ -134,20 +119,14 @@ const {
     }
 
     // ---------------------------------------
-    // 10. Save certificate ID
+    // 11. Save certificate ID
     // ---------------------------------------
 
-    await setLastCertificateId(
-      certificate.certificateId
-    );
+    await setLastCertificateId(certificate.certificateId);
 
-    console.log(
-      "New certificate processed successfully."
-    );
+    console.log("New certificate processed successfully.");
   } catch (error) {
-    console.error(
-      "Certificate automation failed:"
-    );
+    console.error("Certificate automation failed:");
 
     console.error(error);
   } finally {

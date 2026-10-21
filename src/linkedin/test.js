@@ -1,228 +1,175 @@
 const { launchLinkedIn } = require("./auth");
 
-const certificate = {
-  certificateId: "HEER4ZAQIGC2",
-  title: "Structuring Machine Learning Projects",
-  issuer: "DeepLearning.AI",
-  issueDate: "2026-06-26",
-  expiryDate: null,
-  displayOrder: 1,
-  featured: true,
-  credentialUrl:
-    "[https://www.coursera.org/account/accomplishments/verify/HEER4ZAQIGC2](https://www.coursera.org/account/accomplishments/verify/HEER4ZAQIGC2)",
-  badgeImageUrl: null,
-  skills: [
-    "Applied Machine Learning",
-    "Decision Intelligence",
-    "AI Product Strategy",
-    "Deep Learning",
-    "Model Evaluation",
-    "Machine Learning",
-    "Machine Learning Methods",
-    "Model Optimization",
-    "Transfer Learning",
-    "Debugging",
-    "AI Workflows",
-    "Model Training",
-  ],
-};
-
-function getPlainUrl(url) {
-  const match = url.match(/\((https?:\/\/[^)]+)\)/);
-
-  return match ? match[1] : url;
-}
-
-async function scrollToLicensesSection(page) {
-  const licensesSection = page.locator("div").filter({
-    hasText: /^Licenses & certifications \(42\)$/,
+async function openPostComposer(page) {
+  const startPostButton = page.getByRole("button", {
+    name: "Start a post",
   });
 
-  for (let i = 0; i < 15; i++) {
-    console.log(`Page Down ${i + 1}`);
-
-    // Make sure the page has focus
-    await page.locator("body").click({
-      position: { x: 500, y: 300 },
-    });
-
-    // Scroll like a real user
-    await page.keyboard.press("PageDown");
-
-    // Give LinkedIn time to lazy-load the next section
-    await page.waitForTimeout(1500);
-
-    if (await licensesSection.count()) {
-      console.log("✓ Licenses & certifications section loaded");
-
-      return licensesSection.last();
-    }
+  if (await startPostButton.isVisible().catch(() => false)) {
+    await startPostButton.click();
   }
 
-  throw new Error(
-    "Licenses & certifications section did not load after scrolling",
-  );
+  const editor = page
+    .getByTestId("ui-core-tiptap-text-editor-wrapper")
+    .getByRole("paragraph");
+
+  await editor.first().waitFor({
+    state: "visible",
+    timeout: 30000,
+  });
+
+  console.log("Composer opened");
 }
 
-async function createLinkedInCertificate(page, certificate) {
-  // Open profile menu
-  await page.getByRole("button", { name: "Me", exact: true }).click();
+async function fillLinkedInPost(page, postText) {
+  const editor = page
+    .getByTestId("ui-core-tiptap-text-editor-wrapper")
+    .getByRole("paragraph");
 
-  // Open profile
-  await page.getByRole("link", { name: "View profile" }).click();
-
-  await page.waitForLoadState("domcontentloaded");
-
-  // Scroll down until "Add a certification" becomes available
-  await scrollToLicensesSection(page);
-
-  console.log(
-    "Add certification links:",
-    await page
-      .getByRole("link", {
-        name: "Add a certification",
-      })
-      .count(),
-  );
-
-  console.log(
-    "Add certification text:",
-    await page
-      .getByText("Add a certification", {
-        exact: true,
-      })
-      .count(),
-  );
-
-  const addCertification = page.getByRole("link", {
-    name: "Add a certification",
+  await editor.first().waitFor({
+    state: "visible",
+    timeout: 15000,
   });
 
-  await addCertification.waitFor({
+  await editor.first().click();
+  await page.keyboard.insertText(postText);
+
+  console.log("Post text filled");
+}
+
+async function removeLinkPreview(page) {
+  const removePreviewButton = page
+    .getByTestId("lazy-column")
+    .getByRole("button", { name: "Dismiss" });
+
+  await removePreviewButton.waitFor({
     state: "visible",
+    timeout: 15000,
+  });
+
+  await removePreviewButton.click();
+
+  console.log("Link preview removed");
+
+  await page.locator("#ShareBoxLinkPreview").waitFor({
+    state: "detached",
     timeout: 10000,
   });
 
-  await addCertification.click();
+  console.log("Link preview removal confirmed");
+}
 
-  // Wait for certification form
-  await page
-    .getByRole("textbox", {
-      name: "Name*",
-    })
-    .waitFor();
+async function attachCertificate(page, pdfPath, certificateTitle) {
+  const expandContentTypesButton = page.getByRole("button", {
+    name: "Expand content types",
+  });
 
-  // Name
-await page
-  .getByRole("textbox", {
-    name: "Name*",
-  })
-  .fill(certificate.title);
+  await expandContentTypesButton.waitFor({
+    state: "visible",
+    timeout: 15000,
+  });
 
-// Issuing organization
-const issuerInput = page.getByRole("textbox", {
-  name: "Issuing organization*",
+  await expandContentTypesButton.click();
+
+  console.log("Content types expanded");
+
+// 1. Select Document
+await page.getByRole("link", { name: "Document" }).click();
+
+console.log("Document option selected");
+
+// 2. Locate Choose file
+const chooseFile = page.getByRole("button", {
+  name: "Choose file",
 });
 
-await issuerInput.fill(certificate.issuer);
+await chooseFile.waitFor({
+  state: "visible",
+  timeout: 15000,
+});
 
-// Select first matching issuer suggestion
-await page
-  .getByRole("option", {
-    name: certificate.issuer,
-  })
-  .first()
-  .click();
+// 3. Listen for the file chooser BEFORE clicking
+const fileChooserPromise = page.waitForEvent("filechooser");
 
-  // Issue date
-  const [year, month] = certificate.issueDate.split("-");
+await chooseFile.click();
 
-  const issueMonth = page.getByLabel("Issue date month").getByLabel("Month");
+const fileChooser = await fileChooserPromise;
 
-  const issueYear = page.getByLabel("Issue date year").getByLabel("Year");
+// 4. Select the PDF
+// const pdfPath =
+//   "D:\\OneDrive\\Desktop\\Certificates\\Natural Language Processing with Attention Models.pdf";
 
-  await issueMonth.selectOption(String(Number(month)));
-  await issueYear.selectOption(year);
+await fileChooser.setFiles(pdfPath);
 
-  // Credential ID
-  await page
-    .getByRole("textbox", {
-      name: "Credential ID",
-    })
-    .fill(certificate.certificateId);
+console.log("Certificate PDF selected");
 
-  // Credential URL
-  const credentialUrl = getPlainUrl(certificate.credentialUrl);
+// 5. Fill document title
+const documentTitle = page.getByRole("textbox", {
+  name: "Document title*",
+});
 
-  await page
-    .getByRole("textbox", {
-      name: "Credential URL",
-    })
-    .fill(credentialUrl);
+await documentTitle.waitFor({
+  state: "visible",
+  timeout: 30000,
+});
 
-  // Intentionally not adding skills yet.
-  // Pause here so the form can be inspected manually.
-  // await page.pause();
+await documentTitle.fill(certificateTitle);
 
-  // Add media
-  await page
-    .getByRole("button", {
-      name: "Add media",
-    })
-    .click();
+await page.getByRole("button", { name: "Done" }).click();
 
-  // Add a document
-  await page
-    .getByText("Add a document", {
-      exact: true,
-    })
-    .click();
+console.log("Certificate attached");
 
-  // Certificate PDF
-  const pdfPath =
-    "D:\\OneDrive\\Desktop\\Certificates\\Structuring Machine Learning Projects.pdf";
+// Click Post only when you're ready to publish.
+await page.getByRole("button", { name: "Post", exact: true }).click();
 
-  // Find LinkedIn's file input
-  const fileInput = page.locator('input[type="file"]');
-
-  await fileInput.waitFor({
-    state: "attached",
-    timeout: 10000,
-  });
-
-  await fileInput.setInputFiles(pdfPath);
-
-  // Fill document title
-  await page
-    .getByRole("textbox", {
-      name: "Title*",
-    })
-    .fill(certificate.title);
-
-  // Save media
-  await page
-    .getByRole("button", {
-      name: "Save",
-    })
-    .click();
-
-  // Save certification
-  await page
-    .getByRole("button", {
-      name: "Save",
-    })
-    .click();
-
-  await page.pause();
+console.log("LinkedIn post published");
+  
 }
 
 (async () => {
-  try {
-    const { page } = await launchLinkedIn();
+  const { page, context } = await launchLinkedIn();
 
-    await createLinkedInCertificate(page, certificate);
+  try {
+    const postText = `
+I recently completed a course on Natural Language Processing.
+
+I'm looking forward to applying what I've learned to practical projects.
+
+#MachineLearning #NLP #Learning
+https://www.coursera.org/account/accomplishments/verify/SODDM9SUNX55
+`.trim();
+
+    const pdfPath =
+      "D:\\OneDrive\\Desktop\\Certificates\\Natural Language Processing with Attention Models.pdf";
+
+    const certificateTitle =
+      "Natural Language Processing with Attention Models";
+
+    await openPostComposer(page);
+
+    await fillLinkedInPost(page, postText);
+
+    await removeLinkPreview(page);
+
+    await attachCertificate(page, pdfPath, certificateTitle);
+
+    console.log("\nTEST PASSED: Composer and document attachment work.");
+
+    // Keep the browser open so you can inspect the composer.
+    await page.pause();
   } catch (error) {
-    console.error("LinkedIn certificate creation failed:");
+    console.error("\nLinkedIn composer test failed:");
     console.error(error);
+
+    await page.screenshot({
+      path: "linkedin-composer-test-error.png",
+      fullPage: false,
+    });
+
+    await page.pause();
   }
+
+  // Intentionally do not close the context automatically.
+  // LinkedIn may prompt to save the post as a draft if the composer
+  // still contains unsaved content.
 })();
